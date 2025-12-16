@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>Pixel Cowboy 3D</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<style>
+html,body{margin:0;padding:0;overflow:hidden;background:#000}
+canvas{image-rendering:pixelated}
+
+/* UI */
+#ui{position:fixed;top:10px;left:10px;z-index:10}
+button{padding:10px 12px;font-size:14px}
+
+/* Joystick */
+#joystick{
+  position:fixed;left:20px;bottom:20px;width:120px;height:120px;
+  background:rgba(255,255,255,.15);border-radius:50%;z-index:20;
+}
+#stick{
+  position:absolute;left:35px;top:35px;width:50px;height:50px;
+  background:rgba(255,255,255,.8);border-radius:50%;
+}
+
+/* Aim */
+#aimBtn{position:fixed;right:20px;bottom:30px;z-index:20;font-size:22px}
+
+/* Crosshair */
+#crosshair{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:36px;height:36px;border:2px solid #fff;border-radius:50%;
+  display:none;pointer-events:none;z-index:15;
+}
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <button id="viewBtn">👁️ 3인칭</button>
+</div>
+
+<div id="joystick"><div id="stick"></div></div>
+<button id="aimBtn">🎯</button>
+<div id="crosshair"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+<script>
+/* ===== Scene ===== */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+
+const renderer = new THREE.WebGLRenderer({antialias:false});
+renderer.setPixelRatio(1);
+renderer.setSize(innerWidth/3, innerHeight/3, false);
+renderer.domElement.style.width = "100%";
+renderer.domElement.style.height = "100%";
+renderer.domElement.style.imageRendering = "pixelated";
+document.body.appendChild(renderer.domElement);
+
+/* Light */
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5,10,5);
+scene.add(light);
+
+/* Ground */
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(100,100),
+  new THREE.MeshStandardMaterial({color:0xd2b48c})
+);
+ground.rotation.x = -Math.PI/2;
+scene.add(ground);
+
+/* Player (Pixel Cowboy) */
+const player = new THREE.Group();
+const body = new THREE.Mesh(new THREE.BoxGeometry(1,1.5,.5), new THREE.MeshStandardMaterial({color:0x8b4513}));
+body.position.y=1; player.add(body);
+const head = new THREE.Mesh(new THREE.BoxGeometry(.8,.8,.8), new THREE.MeshStandardMaterial({color:0xffdbac}));
+head.position.y=2.1; player.add(head);
+const hat = new THREE.Mesh(new THREE.BoxGeometry(1,.3,1), new THREE.MeshStandardMaterial({color:0x3b2f2f}));
+hat.position.y=2.6; player.add(hat);
+scene.add(player);
+
+/* View / Aim */
+let viewMode="third";
+let aiming=false;
+
+const viewBtn=document.getElementById("viewBtn");
+const aimBtn=document.getElementById("aimBtn");
+const cross=document.getElementById("crosshair");
+
+viewBtn.onclick=()=>{
+  viewMode = viewMode==="third" ? "first" : "third";
+  viewBtn.textContent = viewMode==="third" ? "👁️ 3인칭" : "👀 1인칭";
+};
+
+aimBtn.onclick=()=> aiming=!aiming;
+
+/* Keyboard (PC) */
+const keys={};
+addEventListener("keydown",e=>keys[e.key]=true);
+addEventListener("keyup",e=>keys[e.key]=false);
+
+/* Joystick (Mobile) */
+let joyDX=0, joyDZ=0, joyActive=false;
+const joy=document.getElementById("joystick");
+const stick=document.getElementById("stick");
+
+joy.addEventListener("touchstart",()=>joyActive=true);
+joy.addEventListener("touchmove",e=>{
+  if(!joyActive) return;
+  const r=40, rect=joy.getBoundingClientRect();
+  let x=e.touches[0].clientX-(rect.left+60);
+  let y=e.touches[0].clientY-(rect.top+60);
+  const d=Math.hypot(x,y); if(d>r){x*=r/d; y*=r/d;}
+  stick.style.left=35+x+"px"; stick.style.top=35+y+"px";
+  joyDX=x*0.05; joyDZ=y*0.05;
+});
+joy.addEventListener("touchend",()=>{
+  joyActive=false; joyjoyDX=joyDZ=0;
+  stick.style.left="35px"; stick.style.top="35px";
+});
+
+/* Update */
+function updateMovement(){
+  if(keys.w) player.position.z-=0.2;
+  if(keys.s) player.position.z+=0.2;
+  if(keys.a) player.position.x-=0.2;
+  if(keys.d) player.position.x+=0.2;
+  player.position.x+=joyDX;
+  player.position.z+=joyDZ;
+}
+
+function updateCamera(){
+  if(viewMode==="third"){
+    camera.position.set(player.position.x, player.position.y+4, player.position.z+6);
+    camera.lookAt(player.position);
+    camera.fov=75;
+    player.visible=true;
+    cross.style.display="none";
+  }else{
+    camera.position.set(player.position.x, player.position.y+1.7, player.position.z);
+    camera.fov = aiming ? 40 : 75;
+    camera.updateProjectionMatrix();
+    player.visible=false;
+    cross.style.display = aiming ? "block" : "none";
+  }
+}
+
+/* Loop */
+function animate(){
+  requestAnimationFrame(animate);
+  updateMovement();
+  updateCamera();
+  renderer.render(scene,camera);
+}
+animate();
+
+addEventListener("resize",()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+});
+</script>
+</body>
+</html>
