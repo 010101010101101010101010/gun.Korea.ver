@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>Roblox Western Revolver</title>
+<title>Roblox Western FPS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <style>
 html,body{margin:0;overflow:hidden;background:#000;font-family:sans-serif}
@@ -10,18 +10,26 @@ html,body{margin:0;overflow:hidden;background:#000;font-family:sans-serif}
 /* UI */
 #ui{position:fixed;top:10px;left:10px;z-index:10;color:white}
 #ui div{background:rgba(0,0,0,.5);padding:6px 10px;border-radius:6px;margin-bottom:6px}
-#reload{color:#ffd27d;font-weight:bold}
+#crosshair{
+  position:fixed;top:50%;left:50%;
+  width:20px;height:20px;
+  margin-left:-10px;margin-top:-10px;
+  border:2px solid white;
+  border-radius:50%;
+  display:none;z-index:9;
+}
 
 /* 버튼 */
 button{
   position:fixed;right:20px;
   padding:12px;border:none;
-  border-radius:12px;font-size:20px;
+  border-radius:12px;font-size:18px;
   z-index:10
 }
 #shoot{bottom:20px}
 #reloadBtn{bottom:80px}
 #view{bottom:140px}
+#aim{bottom:200px}
 </style>
 </head>
 <body>
@@ -29,17 +37,19 @@ button{
 <div id="ui">
   <div id="hp">❤️ 100</div>
   <div id="ammo">🔫 6 / 6</div>
-  <div id="reload"></div>
 </div>
+
+<div id="crosshair"></div>
 
 <button id="shoot">🔫</button>
 <button id="reloadBtn">🔄</button>
-<button id="view">👁️</button>
+<button id="view">👁</button>
+<button id="aim">🎯</button>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
 
 <script>
-/* ===== THREE ===== */
+/* ===== THREE 기본 ===== */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0xcfa46a);
 
@@ -60,19 +70,10 @@ const ground=new THREE.Mesh(
 ground.rotation.x=-Math.PI/2;
 scene.add(ground);
 
-/* ===== Roblox 캐릭터 ===== */
+/* ===== 플레이어 ===== */
 const player=new THREE.Group();
 scene.add(player);
 
-/* 머리 */
-const head=new THREE.Mesh(
-  new THREE.BoxGeometry(1.2,1.2,1.2),
-  new THREE.MeshStandardMaterial({color:0xffdbac})
-);
-head.position.y=3.6;
-player.add(head);
-
-/* 몸통 */
 const torso=new THREE.Mesh(
   new THREE.BoxGeometry(1.8,2.2,1),
   new THREE.MeshStandardMaterial({color:0x8b5a2b})
@@ -80,136 +81,86 @@ const torso=new THREE.Mesh(
 torso.position.y=2.2;
 player.add(torso);
 
-/* 왼팔 */
-const leftArm=new THREE.Mesh(
-  new THREE.BoxGeometry(0.5,2,0.5),
-  new THREE.MeshStandardMaterial({color:0xffdbac})
-);
-leftArm.position.set(-1.15,2.2,0);
-player.add(leftArm);
-
-/* 오른팔 (총 드는 팔) */
-const rightArm=new THREE.Mesh(
-  new THREE.BoxGeometry(0.5,2,0.5),
-  new THREE.MeshStandardMaterial({color:0xffdbac})
-);
-rightArm.position.set(1.15,2.2,0);
-player.add(rightArm);
-
-/* 다리 */
-function leg(x){
-  const l=new THREE.Mesh(
-    new THREE.BoxGeometry(0.6,2,0.6),
-    new THREE.MeshStandardMaterial({color:0x444444})
-  );
-  l.position.set(x,1,0);
-  player.add(l);
-}
-leg(-0.45); leg(0.45);
-
 /* ===== 리볼버 ===== */
-const gun=new THREE.Group();
-gun.position.set(0.4,-0.8,0.4);
-rightArm.add(gun);
-
-/* 프레임 */
-const frame=new THREE.Mesh(
+const gun=new THREE.Mesh(
   new THREE.BoxGeometry(1,0.3,0.3),
-  new THREE.MeshStandardMaterial({color:0x222222})
+  new THREE.MeshStandardMaterial({color:0x222})
 );
-gun.add(frame);
-
-/* 실린더 */
-const cylinder=new THREE.Mesh(
-  new THREE.CylinderGeometry(0.22,0.22,0.3,6),
-  new THREE.MeshStandardMaterial({color:0x555555})
-);
-cylinder.rotation.z=Math.PI/2;
-cylinder.position.x=-0.35;
-gun.add(cylinder);
+gun.position.set(1.4,2.2,0.4);
+player.add(gun);
 
 /* ===== 상태 ===== */
+let ammo=6,maxAmmo=6;
 let third=true;
-let maxAmmo=6;
-let ammo=6;
-let reloading=false;
-
+let aiming=false;
 const ammoUI=document.getElementById("ammo");
-const reloadUI=document.getElementById("reload");
+const crosshair=document.getElementById("crosshair");
 
-/* ===== 사운드 ===== */
-const shootSound=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_92c6b43f8f.mp3");
-const reloadSound=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_5a4bba1f45.mp3");
-
-/* ===== 애니메이션 값 ===== */
-let armKick=0;
-let gunKick=0;
+/* ===== 사운드 (거리감) ===== */
+const listener=new THREE.AudioListener();
+camera.add(listener);
+const gunSound=new THREE.PositionalAudio(listener);
+new THREE.AudioLoader().load(
+  "https://cdn.pixabay.com/audio/2022/03/15/audio_92c6b43f8f.mp3",
+  buffer=>{
+    gunSound.setBuffer(buffer);
+    gunSound.setRefDistance(10);
+  }
+);
+gun.add(gunSound);
 
 /* ===== 발사 ===== */
 function shoot(){
-  if(ammo<=0 || reloading) return;
-
+  if(ammo<=0) return;
   ammo--;
   ammoUI.innerText=`🔫 ${ammo} / ${maxAmmo}`;
-  shootSound.currentTime=0; shootSound.play();
-
-  /* 반동 트리거 */
-  armKick=0.4;
-  gunKick=0.25;
-
-  /* 실린더 회전 */
-  cylinder.rotation.x -= Math.PI/3;
+  gunSound.play();
 }
 
-/* ===== 한 발 장전 ===== */
-function reloadOne(){
-  if(reloading || ammo>=maxAmmo) return;
-  reloading=true;
-  reloadUI.innerText="장전 중…";
-  reloadSound.currentTime=0;
-  reloadSound.play();
+/* ===== 조준 ===== */
+document.getElementById("aim").onclick=()=>{
+  aiming=!aiming;
+  crosshair.style.display=aiming?"block":"none";
+  camera.fov=aiming?40:70;
+  camera.updateProjectionMatrix();
+};
 
-  /* 장전 모션 */
-  armKick=-0.3;
-
-  setTimeout(()=>{
-    ammo++;
-    ammoUI.innerText=`🔫 ${ammo} / ${maxAmmo}`;
-    reloadUI.innerText="";
-    reloading=false;
-  },600);
-}
+/* ===== 이동 (왼쪽 화면 전용) ===== */
+let moveX=0,moveZ=0;
+document.addEventListener("touchstart",e=>{
+  if(e.touches[0].clientX<innerWidth/2){
+    moveX=e.touches[0].clientX;
+    moveZ=e.touches[0].clientY;
+  }
+});
+document.addEventListener("touchmove",e=>{
+  if(e.touches[0].clientX<innerWidth/2){
+    player.position.x+=(e.touches[0].clientX-moveX)*0.002;
+    player.position.z+=(e.touches[0].clientY-moveZ)*0.002;
+    moveX=e.touches[0].clientX;
+    moveZ=e.touches[0].clientY;
+  }
+});
 
 /* ===== 루프 ===== */
 function animate(){
   requestAnimationFrame(animate);
 
-  /* 팔 애니메이션 */
-  rightArm.rotation.x += armKick;
-  armKick *= 0.6;
-
-  /* 총 애니메이션 */
-  gun.position.z -= gunKick;
-  gunKick *= 0.6;
-  gun.position.z += gunKick;
-
-  /* 카메라 */
   camera.position.lerp(
     third
       ? new THREE.Vector3(player.position.x,6,player.position.z+8)
       : new THREE.Vector3(player.position.x,4.2,player.position.z+0.2),
-    0.12
+    0.15
   );
-  camera.lookAt(player.position.x,3,player.position.z);
+  camera.lookAt(player.position.x,2.5,player.position.z);
 
   renderer.render(scene,camera);
 }
 animate();
 
-/* ===== 버튼 ===== */
 document.getElementById("shoot").onclick=shoot;
-document.getElementById("reloadBtn").onclick=reloadOne;
 document.getElementById("view").onclick=()=>third=!third;
+document.getElementById("reloadBtn").onclick=()=>{ammo=maxAmmo;ammoUI.innerText=`🔫 ${ammo} / ${maxAmmo}`};
 </script>
 </body>
 </html>
