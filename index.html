@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>Roblox R6 Shooter Mobile - Detailed Guns</title>
+<title>Roblox R6 Shooter Mobile - Final</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <style>
 html,body{margin:0;overflow:hidden;background:#000;font-family:sans-serif;width:100vw;height:100vh;}
@@ -67,11 +67,13 @@ let outfit = localStorage.getItem("outfit") || "cowboy";
 let money = Number(localStorage.getItem("money")) || 0;
 let ownedWeapons = JSON.parse(localStorage.getItem("weapons")) || ["revolver"];
 
-// ===== THREE.js 기본 세팅 =====
+// ===== THREE.js 세팅 =====
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xcfa46a);
 const camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.1, 300);
-const renderer = new THREE.WebGLRenderer({antialias:true}); renderer.setSize(innerWidth,innerHeight); document.body.appendChild(renderer.domElement);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+document.body.appendChild(renderer.domElement);
 scene.add(new THREE.AmbientLight(0xffffff,.7));
 const sun=new THREE.DirectionalLight(0xffffff,1); sun.position.set(30,50,20);scene.add(sun);
 
@@ -92,12 +94,16 @@ const head = new THREE.Mesh(new THREE.BoxGeometry(1.1,1.1,1.1), new THREE.MeshSt
 head.position.y=3.4;player.add(head);
 
 // 팔
-const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.8,2,0.8), new THREE.MeshStandardMaterial({color:skinColor()})); rightArm.position.set(1.5,2,0);player.add(rightArm);
-const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.8,2,0.8), new THREE.MeshStandardMaterial({color:skinColor()})); leftArm.position.set(-1.5,2,0);player.add(leftArm);
+const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.8,2,0.8), new THREE.MeshStandardMaterial({color:skinColor()}));
+rightArm.position.set(1.5,2,0);player.add(rightArm);
+const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.8,2,0.8), new THREE.MeshStandardMaterial({color:skinColor()}));
+leftArm.position.set(-1.5,2,0);player.add(leftArm);
 
 // 다리
-const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.8,2,0.8), new THREE.MeshStandardMaterial({color:0x444444})); rightLeg.position.set(0.6,0,0);player.add(rightLeg);
-const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.8,2,0.8), new THREE.MeshStandardMaterial({color:0x444444})); leftLeg.position.set(-0.6,0,0);player.add(leftLeg);
+const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.8,2,0.8), new THREE.MeshStandardMaterial({color:0x444444}));
+rightLeg.position.set(0.6,0,0);player.add(rightLeg);
+const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.8,2,0.8), new THREE.MeshStandardMaterial({color:0x444444}));
+leftLeg.position.set(-0.6,0,0);player.add(leftLeg);
 
 // ===== 얼굴 =====
 const faceCanvas = document.createElement("canvas"); faceCanvas.width=128;faceCanvas.height=128;
@@ -122,7 +128,7 @@ const weapons = {
 };
 let currentWeapon="revolver"; let gun;
 
-// 리볼버 디테일 모델
+// 디테일 모델 함수
 function createRevolver(){
   const g = new THREE.Group();
   const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.4,16),
@@ -136,8 +142,6 @@ function createRevolver(){
   grip.position.set(-0.3,-0.1,0); g.add(grip);
   g.position.set(0,-1,0.8); return g;
 }
-
-// 글록 디테일 모델
 function createGlock(){
   const g = new THREE.Group();
   const slide = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.2,0.3),
@@ -148,8 +152,6 @@ function createGlock(){
     new THREE.MeshStandardMaterial({color:0x444444, metalness:0.8, roughness:0.3})); trigger.position.set(-0.05,-0.05,0.15); g.add(trigger);
   g.position.set(0,-1,0.8); return g;
 }
-
-// BBgun 디테일
 function createBBgun(){
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.BoxGeometry(1,0.2,0.2),
@@ -173,11 +175,7 @@ function showMoneyPopup(amount){const el=document.getElementById("moneyPopup");i
 
 // 상점
 function buyWeapon(type){const w=weapons[type];if(ownedWeapons.includes(type)){equipWeapon(type); closeShop(); return;}if(money<w.price){alert("돈 부족!"); return;} money-=w.price; localStorage.setItem("money",money); showMoneyPopup(-w.price); ownedWeapons.push(type); localStorage.setItem("weapons",JSON.stringify(ownedWeapons)); equipWeapon(type); closeShop(); updateHUD();}
-function openShop(){
-  const shopEl=document.getElementById("shop"); shopEl.style.display="flex";
-  const oldBB = document.getElementById("bbgunItem"); if(oldBB) shopEl.removeChild(oldBB);
-  if(Math.random()<0.01){ const bb=document.createElement("div"); bb.id="bbgunItem"; bb.className="shopItem"; bb.innerText="🔫 BBgun – 100$ (풀오토)"; bb.onclick=()=>buyWeapon("bbgun"); shopEl.appendChild(bb);}
-}
+function openShop(){const shopEl=document.getElementById("shop"); shopEl.style.display="flex"; const oldBB = document.getElementById("bbgunItem"); if(oldBB) shopEl.removeChild(oldBB); if(Math.random()<0.01){ const bb=document.createElement("div"); bb.id="bbgunItem"; bb.className="shopItem"; bb.innerText="🔫 BBgun – 100$ (풀오토)"; bb.onclick=()=>buyWeapon("bbgun"); shopEl.appendChild(bb);} }
 function closeShop(){document.getElementById("shop").style.display="none";}
 document.getElementById("shopBtn").onclick=openShop;
 
@@ -244,15 +242,4 @@ const savedOutfit = localStorage.getItem("outfit"); if(savedOutfit) changeOutfit
 function animate(){requestAnimationFrame(animate);
 player.position.x += moveX*Math.cos(cameraYaw)-moveZ*Math.sin(cameraYaw);
 player.position.z += moveZ*Math.cos(cameraYaw)+moveX*Math.sin(cameraYaw);
-const dist = thirdPerson ? (aiming?4:8) : 0.1;
-camera.position.set(player.position.x + Math.sin(cameraYaw)*dist,3,player.position.z + Math.cos(cameraYaw)*dist);
-camera.rotation.x = cameraPitch;
-camera.rotation.y = cameraYaw;
-renderer.render(scene,camera);}
-animate();
-
-// 초기 장착
-equipWeapon("revolver"); updateHUD();
-</script>
-</body>
-</html>
+const dist = thirdPerson ? (aiming
