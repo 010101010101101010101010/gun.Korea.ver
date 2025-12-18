@@ -70,14 +70,12 @@ canvas{display:block}
 
 <body>
 
-<!-- 닉네임 -->
 <div id="nickBox">
   <h2>닉네임</h2>
-  <input id="nickInput" placeholder="닉네임">
+  <input id="nickInput" placeholder="닉네임 (developer 가능)">
   <button onclick="startGame()">시작</button>
 </div>
 
-<!-- UI -->
 <div id="joyBase"><div id="joyStick"></div></div>
 <button id="shoot" class="btn">🔫</button>
 <button id="aim" class="btn">🎯</button>
@@ -106,10 +104,10 @@ const moneyEl = document.getElementById("money");
 
 /* ===== 상태 ===== */
 let nickname="", money=0;
-let ownedWeapons = new Set();
+let ownedWeapons=new Set();
 let shopTab="weapons";
 
-/* ===== 무기 데이터 ===== */
+/* ===== 무기 ===== */
 const weapons={
   revolver:{price:0,ammo:6,recoil:.25,mode:"semi"},
   m1911:{price:10000,ammo:7,recoil:.1,mode:"semi"},
@@ -122,29 +120,31 @@ let currentWeapon,wepAmmo,weaponMesh,kick=0,boltReady=true;
 
 /* ===== 시작 ===== */
 function startGame(){
-  nickname = document.getElementById("nickInput").value.trim();
+  nickname=document.getElementById("nickInput").value.trim();
   if(!nickname) return;
 
   ownedWeapons.clear();
-  money = 0;
+  money=0;
 
-  if(nickname === "developer"){
+  if(nickname==="developer"){
     for(const k in weapons) ownedWeapons.add(k);
-    money = 999999;
+    money=999999;
     alert("개발자 모드 활성화");
   }else{
     ownedWeapons.add("revolver");
   }
-
   equipWeapon("revolver");
   updateHUD();
-  document.getElementById("nickBox").style.display="none";
+  nickBox.style.display="none";
 }
 
 /* ===== THREE ===== */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0xcfa46a);
-const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,200);
+
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,500);
+camera.rotation.order="YXZ";
+
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -154,7 +154,7 @@ const sun=new THREE.DirectionalLight(0xffffff,1);
 sun.position.set(20,40,20);scene.add(sun);
 
 const ground=new THREE.Mesh(
-  new THREE.PlaneGeometry(300,300),
+  new THREE.PlaneGeometry(500,500),
   new THREE.MeshStandardMaterial({color:0xc2a46d})
 );
 ground.rotation.x=-Math.PI/2;scene.add(ground);
@@ -175,19 +175,19 @@ const lArm=box(.9,2.2,.9,Y);lArm.position.set(-1.8,3,0);player.add(lArm);
 const lLeg=box(1,2.4,1,G);lLeg.position.set(-.6,1.2,0);player.add(lLeg);
 const rLeg=box(1,2.4,1,G);rLeg.position.set(.6,1.2,0);player.add(rLeg);
 
-/* ===== 무기 장착 ===== */
+/* ===== 무기 ===== */
 function equipWeapon(id){
   if(!ownedWeapons.has(id)){
-    if(money < weapons[id].price) return alert("돈 부족");
-    money -= weapons[id].price;
+    if(money<weapons[id].price) return alert("돈 부족");
+    money-=weapons[id].price;
     ownedWeapons.add(id);
   }
   if(weaponMesh) rArm.remove(weaponMesh);
-  currentWeapon = weapons[id];
-  wepAmmo = currentWeapon.ammo;
-  boltReady = true;
+  currentWeapon=weapons[id];
+  wepAmmo=currentWeapon.ammo;
+  boltReady=true;
 
-  weaponMesh = new THREE.Mesh(
+  weaponMesh=new THREE.Mesh(
     new THREE.BoxGeometry(1.5,.3,.3),
     new THREE.MeshStandardMaterial({color:0x222})
   );
@@ -198,14 +198,14 @@ function equipWeapon(id){
 
 /* ===== HUD ===== */
 function updateHUD(){
-  ammoEl.innerText = "🔫 " + wepAmmo;
-  moneyEl.innerText = "$" + money;
+  ammoEl.innerText="🔫 "+wepAmmo;
+  moneyEl.innerText="$"+money;
 }
 
-/* ===== 사격/장전 ===== */
+/* ===== 사격 ===== */
 shoot.onclick=()=>{
   if(wepAmmo<=0) return;
-  if(currentWeapon.mode==="bolt" && !boltReady) return;
+  if(currentWeapon.mode==="bolt"&&!boltReady) return;
   wepAmmo--;
   kick=currentWeapon.recoil;
   if(currentWeapon.mode==="bolt") boltReady=false;
@@ -228,59 +228,61 @@ aim.onclick=()=>{
 
 /* ===== 조이스틱 & 시점 ===== */
 let mx=0,mz=0,mt=null,lt=null,jc={},ll={};
+
 addEventListener("touchstart",e=>{
   for(const t of e.touches){
-    if(t.clientX<innerWidth/2 && mt===null){mt=t.identifier;jc={x:t.clientX,y:t.clientY}}
-    else if(t.clientX>=innerWidth/2 && lt===null){lt=t.identifier;ll={x:t.clientX,y:t.clientY}}
+    if(t.clientX<innerWidth/2 && mt===null){
+      mt=t.identifier;jc={x:t.clientX,y:t.clientY};
+    }else if(t.clientX>=innerWidth/2 && lt===null){
+      lt=t.identifier;ll={x:t.clientX,y:t.clientY};
+    }
   }
 });
 addEventListener("touchmove",e=>{
   for(const t of e.touches){
     if(t.identifier===mt){
       const dx=t.clientX-jc.x,dy=t.clientY-jc.y;
-      mx=Math.max(-.15,Math.min(.15,dx/200));
-      mz=Math.max(-.15,Math.min(.15,dy/200));
+      mx=Math.max(-1,Math.min(1,dx/40));
+      mz=Math.max(-1,Math.min(1,dy/40));
       joyStick.style.transform=`translate(${dx}px,${dy}px)`;
     }
     if(t.identifier===lt){
-      camera.rotation.y-=(t.clientX-ll.x)*.005;
-      camera.rotation.x-=(t.clientY-ll.y)*.005;
+      camera.rotation.y-=(t.clientX-ll.x)*0.005;
+      camera.rotation.x-=(t.clientY-ll.y)*0.005;
+      camera.rotation.x=Math.max(-1.2,Math.min(1.2,camera.rotation.x));
       ll={x:t.clientX,y:t.clientY};
     }
   }
 });
 addEventListener("touchend",e=>{
   for(const t of e.changedTouches){
-    if(t.identifier===mt){mt=null;mx=mz=0;joyStick.style.transform="translate(0,0)"}
+    if(t.identifier===mt){mt=null;mx=mz=0;joyStick.style.transform="translate(0,0)";}
     if(t.identifier===lt) lt=null;
   }
 });
 
-/* ===== 상점 ===== */
-shopBtn.onclick=()=>shop.style.display="block";
-function renderShop(){
-  shopList.innerHTML="";
-  if(shopTab==="weapons"){
-    for(const k in weapons){
-      const owned = ownedWeapons.has(k);
-      const b=document.createElement("button");
-      b.innerText = owned ? `${k} (보유중)` : `${k} $${weapons[k].price}`;
-      b.disabled = owned;
-      b.onclick = ()=>equipWeapon(k);
-      shopList.appendChild(b);
-    }
-  }
-}
-
-/* ===== 루프 ===== */
+/* ===== 루프 (이동 FIX) ===== */
 function animate(){
   requestAnimationFrame(animate);
+
   kick*=0.6;
   rArm.rotation.x=-kick;
-  player.position.x+=mx;
-  player.position.z+=mz;
-  camera.position.set(player.position.x,player.position.y+4,player.position.z+7);
+
+  // 카메라 기준 이동
+  const forward=new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  forward.y=0;forward.normalize();
+  const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0));
+
+  player.position.addScaledVector(forward,-mz*0.4);
+  player.position.addScaledVector(right,mx*0.4);
+
+  // 카메라 3인칭
+  const camOffset=forward.clone().multiplyScalar(-8);
+  camOffset.y=4;
+  camera.position.copy(player.position).add(camOffset);
   camera.lookAt(player.position.x,player.position.y+3,player.position.z);
+
   renderer.render(scene,camera);
 }
 animate();
